@@ -1,0 +1,2 @@
+salloc -N 2 -n 72 -t 08:00:00 --mem 369G
+source /work/mech-ai/rtali/mlpythonenv/bin/activate
