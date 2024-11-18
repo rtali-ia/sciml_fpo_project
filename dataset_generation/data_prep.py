@@ -1,7 +1,7 @@
 import numpy as np
-from data_helper import read_time_steps, read_data_settings, data_download
+from data_helper import read_time_steps, read_data_settings, data_download #Import the functions from data_helper.py
 import logging
-from data_logger import setup_logger
+from data_logger import setup_logger #Import the logger function from data_logger.py
 
 if __name__ == '__main__':
     
