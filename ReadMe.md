@@ -1,7 +1,8 @@
 ## Part - I : Data Preprocessing
 
-0. Activate the virtual environment on Nova:
+0. Request an Interactive Node and activate the virtual environment on Nova:
     ```
+    salloc -N 2 -n 72 -t 08:00:00 --mem 369G
     source /work/mech-ai/rtali/mlpythonenv/bin/activate
     ```
 
@@ -21,3 +22,9 @@
     ```
 
 ## Part - II : Model Training
+
+0. Request an Interactive GPU Node and activate the virtual environment on Nova:
+    ```
+    salloc -N 1 -n 8 --gres gpu:a100:1 -t 8:00:00 --mem 369G
+    source /work/mech-ai/rtali/mlpythonenv/bin/activate
+    ```
