@@ -65,7 +65,7 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
     in_data = np.zeros((num_samples, in_channels, res_y, res_x))
     out_data = np.zeros((num_samples, out_channels, res_y, res_x))
     
-    samp = 0
+    samp = 0 #Track the number of samples
     
     # Read data from npz files for the specified time steps. Load the data into the numpy arrays in_data and out_data.
     
@@ -116,6 +116,8 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
         out_data[samp, :, :, :] = flow_data_out
         
         samp += 1
+    
+    print("Total number of processed samples = ", samp)
     
     #Return the input and output data 
     return in_data, out_data
