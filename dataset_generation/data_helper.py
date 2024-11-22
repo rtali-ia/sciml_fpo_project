@@ -36,7 +36,7 @@ def read_data_settings(PATH : str):
 
 def sample_counter(root_data_dir : str):
     # Count the number of samples in the dataset
-    structure = root_data_dir + '/**/solution.npz'
+    structure = root_data_dir + '/**/Re_*.npz'
     samps = 0
     for file in glob.glob(structure, recursive=True):
         samp += 1
@@ -62,34 +62,36 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
     out_channels = 3*len(out_time_steps)
     
     #Initialize the numpy arrays for input and output data. Allot memory for the numpy arrays.
-    in_data = np.zeros((num_samples, in_channels, res_x, res_y))
-    out_data = np.zeros((num_samples, out_channels, res_x, res_y))
+    in_data = np.zeros((num_samples, in_channels, res_y, res_x))
+    out_data = np.zeros((num_samples, out_channels, res_y, res_x))
     
     samp = 0
     
     # Read data from npz files for the specified time steps. Load the data into the numpy arrays in_data and out_data.
     
     #Iterate over the folder structure to read the data
-    structure = root_data_dir + '/**/solution.npz'
+    structure = root_data_dir + '/**/Re_*.npz'
     
     #Extract the geometry and reynolds number from the path of the npz file
     for file in glob.glob(structure, recursive=True):
         
         #Read the geometry and reynolds number from the path
-        sdf_data = file.split('/')[-3]
-        reynolds_number = file.split('/')[-2]
+        sdf_data = file.split('/')[-2]
+        reynolds_number = file.split('/')[-1]
+        reynolds_number = reynolds_number.split('_')[-1]
+        reynolds_number = reynolds_number.split('.')[0]
         
         #Load the geometry data
-        geometry_data = np.load(root_geometry_dir + '/' + sdf_data + '/sdf.npy')
+        geometry_data = np.load(root_geometry_dir + '/sdf_'+sdf_data+'.npz')['data']
         #Scale the geometry data to the resolution of the flow data
-        scale = geometry_data.shape[0] // res_x
+        scale = geometry_data.shape[1] // res_x
         geometry_data = geometry_data[::scale, ::scale]
         
         #Load this geometry data to in_data
         in_data[samp, 0, :, :] = geometry_data
         
         #Create the reynolds number field
-        reynolds_number = np.ones((res_x, res_y)) * int(reynolds_number)
+        reynolds_number = np.ones((res_y, res_x)) * int(reynolds_number)
         
         #Load this reynolds number to in_data
         in_data[samp, 1, :, :] = reynolds_number
@@ -100,6 +102,14 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
         #Select the time steps for input and output data
         flow_data_in = flow_data[in_time_steps, :, :, :]
         flow_data_out = flow_data[out_time_steps, :, :, :]
+        
+        #Move the last dimension to the second dimension
+        flow_data_in = flow_data_in.transpose(0,3,1,2)
+        flow_data_out = flow_data_out.transpose(0,3,1,2)
+        
+        #Combine the first two dimensions to get the input and output channels
+        flow_data_in = flow_data_in.reshape(-1, res_y, res_x)
+        flow_data_out = flow_data_out.reshape(-1, res_y, res_x)
         
         #Load the flow data to in_data and out_data
         in_data[samp, 2:, :, :] = flow_data_in
