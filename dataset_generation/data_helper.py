@@ -3,6 +3,7 @@ import numpy as np
 import time
 import logging
 import glob
+import matplotlib.pyplot as plt
 
 def read_time_steps(PATH : str):
     # Read time settings from config file (./data.ini)
@@ -37,10 +38,10 @@ def read_data_settings(PATH : str):
 def sample_counter(root_data_dir : str):
     # Count the number of samples in the dataset
     structure = root_data_dir + '/**/Re_*.npz'
-    samps = 0
+    samp = 0
     for file in glob.glob(structure, recursive=True):
         samp += 1
-    return samps
+    return samp
 
 # Write a decorator function that logs the time taken by a function to execute
 def log_time(func):
@@ -51,11 +52,14 @@ def log_time(func):
         logging.info(f'{func.__name__} took {end-start} seconds to execute')
         return result
 
-@log_time
+#@log_time
 def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res_y : int, in_time_steps : list, out_time_steps : list):
     
     #Get the number of samples, resolution of the data, and the root directories for data and geometry
     num_samples = sample_counter(root_data_dir)
+    
+    #Print the number of samples
+    print("Total number of samples = ", num_samples)
     
     #Define the Input and Output Channels
     in_channels = 3*len(in_time_steps) + 2 # 3 channels for each time step and 2 channels for the geometry + Reynolds number
@@ -74,6 +78,8 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
     
     #Extract the geometry and reynolds number from the path of the npz file
     for file in glob.glob(structure, recursive=True):
+        
+        print(file)
         
         #Read the geometry and reynolds number from the path
         sdf_data = file.split('/')[-2]
@@ -119,7 +125,53 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
     
     print("Total number of processed samples = ", samp)
     
+    #Print the shape of the input and output data
+    print("Shape of in_data = ", in_data.shape)
+    print("Shape of out_data = ", out_data.shape)
+    
+    
+    #Plot the the first 5 channels of the first sample
+    fig, ax = plt.subplots(5, 1, figsize=(20, 10))
+    ax[0].imshow(in_data[0, 0, :, :], cmap='jet')
+    ax[0].set_title('Geometry')
+    ax[1].imshow(in_data[0, 1, :, :], cmap='jet')
+    ax[1].set_title('Reynolds Number')
+    ax[2].imshow(in_data[0, 2, :, :], cmap='jet')
+    ax[2].set_title('U')
+    ax[3].imshow(in_data[0, 3, :, :], cmap='jet')
+    ax[3].set_title('V')
+    ax[4].imshow(in_data[0, 4, :, :], cmap='jet')
+    ax[4].set_title('P')
+    plt.savefig('from_tensor_data_sdf_skelneton.png')
+    
+    #Plot from prepared tensor output
+    
+    #Load the data
+
+    #Plot the the first 3 channels of the first sample
+    fig, ax = plt.subplots(3, 1, figsize=(20, 10))
+    ax[0].imshow(out_data[0, 0, :, :], cmap='jet')
+    ax[0].set_title('U')
+    ax[1].imshow(out_data[0, 1, :, :], cmap='jet')
+    ax[1].set_title('V')
+    ax[2].imshow(out_data[0, 2, :, :], cmap='jet')
+    ax[2].set_title('P')
+    plt.savefig('from_tensor_data_sdf_skelneton_output.png')
+    
+    print("Samples plotted and saved locally")
+    
     #Return the input and output data 
     return in_data, out_data
+
+
+if __name__ == '__main__':
+    
+    in_steps, out_steps = read_time_steps('./dataset_generation/data.ini')
+    print(in_steps, out_steps)
+    
+    pct_samples, res_x, res_y, root_data_dir, root_geometry_dir = read_data_settings('./dataset_generation/data.ini')
+    print(pct_samples, res_x, res_y, root_data_dir, root_geometry_dir)
+    
+    in_data, out_data = data_download(root_data_dir, root_geometry_dir, res_x, res_y, in_steps, out_steps)
 
 

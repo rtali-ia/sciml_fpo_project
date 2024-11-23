@@ -13,6 +13,8 @@ if __name__ == '__main__':
     INI_FILE_PATH = '/work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/data.ini'
     in_time_steps, out_time_steps = read_time_steps(INI_FILE_PATH)
     pct_samples, res_x, res_y, root_data_dir, root_geometry_dir = read_data_settings(INI_FILE_PATH)
+    
+    print(in_time_steps, out_time_steps, pct_samples, res_x, res_y, root_data_dir, root_geometry_dir)
 
     logger.info('Read all settings from config file - Done')
     
@@ -33,7 +35,7 @@ if __name__ == '__main__':
     '''
     
     #Wait for the user to press a key to continue
-    input('Check Logs and Press Enter to continue .........')
+    #input('Check Logs and Press Enter to continue .........')
     
     # Download data from the root directories
     in_data, out_data = data_download(root_data_dir, root_geometry_dir, res_x, res_y, in_time_steps, out_time_steps)
