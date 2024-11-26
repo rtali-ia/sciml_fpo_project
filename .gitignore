@@ -1,2 +1,3 @@
 dataset_generation/fpo/
 dataset_generation/__pycache__/
+checker.py
