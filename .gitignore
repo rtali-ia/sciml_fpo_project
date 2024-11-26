@@ -1,3 +1,9 @@
 dataset_generation/fpo/
 dataset_generation/__pycache__/
 checker.py
+models/__pycache__/
+models/fno/__pycache__/
+models/deeponet/__pycache__/
+models/scOT/__pycache__/
+wandb/
+model_training/__pycache__/

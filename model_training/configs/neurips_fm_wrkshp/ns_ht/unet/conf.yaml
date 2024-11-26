@@ -1,0 +1,51 @@
+callbacks:
+  checkpoint:
+    dirpath: ./checkpoints/
+    filename: unet-{epoch:02d}-{val_loss:.6f}
+    mode: min
+    monitor: val_loss_full
+    save_top_k: 1
+  early_stopping:
+    monitor: val_loss_full
+    patience: 1000
+  validation_logging:
+    plot_path: ./plots/
+data:
+  batch_size: 32
+  equation: ns+ht
+  file_path_test_x: /work/mech-ai-scratch/arabeh/data_prep_ns/LDC_NS_2D/processed/easy/nurbs_ldc_test_x.npz
+  file_path_test_y: /work/mech-ai-scratch/arabeh/data_prep_ns/LDC_NS_2D/processed/easy/nurbs_ldc_test_y.npz
+  file_path_train_x: /work/mech-ai-scratch/arabeh/data_prep_ns/LDC_NS_2D/processed/easy/nurbs_ldc_train_x.npz
+  file_path_train_y: /work/mech-ai-scratch/arabeh/data_prep_ns/LDC_NS_2D/processed/easy/nurbs_ldc_train_y.npz
+  inputs: sdf
+  shuffle: true
+  subsample: false
+  train_split: 0.8
+  type: field
+  val_split: 0.2
+model:
+  channel_mult:
+  - 1
+  - 2
+  - 4
+  - 6
+  - 8
+  - 10
+  - 12
+  in_channels: 3
+  log_file: log_unet_lr=0.001_batch=5.txt
+  lr: 0.0001
+  model_channels: 32
+  num_res_blocks: 2
+  out_channels: 4
+  plot_path: ./plots/
+sweep_parameters:
+  seed:
+    values:
+    - 0
+trainer:
+  accelerator: gpu
+  devices: 1
+  log_every_n_steps: 10
+  max_epochs: 400
+  seed: 0
