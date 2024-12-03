@@ -1,6 +1,8 @@
 import torch.nn as nn
 from models.base import BaseLightningModule
 from models.deeponet.network import DeepONet2D
+import torch.nn.functional as F
+from sklearn.metrics import r2_score
 
 class DeepONet(BaseLightningModule):
     def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt'):
@@ -15,11 +17,11 @@ class DeepONet(BaseLightningModule):
         self.model = DeepONet2D(input_channels_func = self.input_channels_func, input_channels_loc = self.input_channels_loc, 
                                 output_channels = self.output_channels, branch_net_layers = self.branch_net_layers,
                                 trunk_net_layers = self.trunk_net_layers, modes = self.modes)
-
-
     def forward(self, x):
         x1 = x[:,:self.input_channels_func,:,:] # x[:,:,:,:3]# function values [Re, SDF, mask]
         x2 = x[:,self.input_channels_func:,:,:] #x[:,:,:,3:] # grid points [x,y]
         return self.model(x1, x2)
 
- 
+    def on_train_epoch_end(self): # Ronak - Added this
+        self.trainer.datamodule.update_data(self.trainer.current_epoch)
+    

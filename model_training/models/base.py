@@ -46,44 +46,14 @@ class BaseLightningModule(pl.LightningModule):
         y_mean = y[:,:,4,4]
         y_hat_mean = y_hat[:,:,4,4]
         
-        #Print the shape of y_mean and y_hat_mean
-        #print(y_mean)
-        #print(y_hat_mean)
-        
-        
         # Calculate r2 score
         for i in range(y_hat.shape[1]):
             r2_channel = r2_score(y_mean[:, i].flatten(), y_hat_mean[:, i].flatten())
             self.log(f'val_r2_score_channel_{i}', r2_channel, on_epoch=True)
-            
-            #r2_overall = r2_score(y_mean.flatten(), y_hat_mean.flatten())
-            #self.log('val_r2_score', r2_overall, on_epoch=True)
         
         #Log total r2 score
         r2_overall = r2_score(y_mean.flatten(), y_hat_mean.flatten())
         self.log('val_r2_score_full', r2_overall, on_epoch=True)
-        
-        # '''
-        # Calculate overall r2 score
-        # '''
-        # # Assuming y and y_hat have shape [batch_size, channels, ...]
-        # r2_overall = r2_score(y.flatten(), y_hat.flatten())
-    
-        # '''
-        # Calculate r2 score for each channel
-        # '''
-        # r2_scores = []
-        
-        # for i in range(y.shape[1]):  # Loop through each channel
-        #     r2_channel = r2_score(y[:, i].flatten(), y_hat[:, i].flatten())
-        #     r2_scores.append(r2_channel)
-    
-        # # Log overall r2 score
-        # self.log('val_r2_score', r2_overall, on_epoch=True)
-    
-        # # Log r2 score for each channel
-        # for i, r2_channel in enumerate(r2_scores):
-        #     self.log(f'val_r2_score_channel_{i}', r2_channel, on_epoch=True)
        
         return losses[0]  # Returning the full MSE loss for monitoring
     
@@ -110,19 +80,14 @@ class BaseLightningModule(pl.LightningModule):
             losses.append((loss[:,idx].sum((1,2)) / node_count).mean().item())
         
         if y_hat.shape[1] == 1:    # c for ns only
-            loss_names = ['full', 'c']
-        
+            loss_names = ['full','c']
         if y_hat.shape[1] == 2:    # uv for ns only
-            loss_names = ['full', 'u', 'v']
-        
-        if y_hat.shape[1] == 3:    # uvp for ns only
-            loss_names = ['full', 'u', 'v', 'p']
+            loss_names = ['full','u', 'v']
+        if y_hat.shape[1] == 3:    # uvp for ns and fpo only
+            loss_names = ['full','u', 'v', 'p']
         if y_hat.shape[1] == 4:    # uvpt for ns+ht
-            loss_names = ['full', 'u', 'v', 'p', 't']
+            loss_names = ['full','u', 'v', 'p', 't']
         if y_hat.shape[1] == 8:    # uvptc for ns+ht
-            loss_names = ['full', 'x0', 'y0', 'z0', 'theta', 'phi', 'a', 'b','c']
-        
-        # for i, name in enumerate(loss_names):
-        #     self.log(f'val_loss_{name}', losses[i], on_epoch=True)
-        
+            loss_names = ['full','x0', 'y0', 'z0', 'theta', 'phi', 'a', 'b','c']
+          
         return losses

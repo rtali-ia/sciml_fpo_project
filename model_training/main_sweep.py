@@ -11,15 +11,8 @@ from torch.utils import data
 import random
 import numpy as np
 import time
-from data.dataset import LidDrivenDataset
-from models.fno.fno import FNO
-from models.cno.cno import cno
-from models.uno.uno import UNO
-#from models.gino.gino import GeoInformedNO
-from models.wno.wno import WNO
+from data.dataset_fpo import FPODataset
 from models.deeponet.deeponet import DeepONet
-from models.pod_deeponet.pod_deeponet import PODDeepONet
-from models.geometric_deeponet.geometric_deeponet import GeometricDeepONet
 
 
 def set_seed(seed):
@@ -29,10 +22,29 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     pl.seed_everything(seed)
     
+
+def time_sampler(t_start, t_end, n_in, n_out): #Ronak - Added this
+    """
+    Generates time samples for training and testing.
+    
+    Args:
+        t_start (int): The starting time index.
+        t_end (int): The ending time index.
+        n_in (int): The number of input time steps.
+        n_out (int): The number of output time steps.
+    
+    Returns:
+        tuple: A tuple containing the input and output time indices.
+    """
+    time_in = np.arange(t_start, t_end - n_out)
+    time_out = np.arange(t_start + n_in, t_end)
+    
+    return time_in, time_out
     
 def main(model_name, equation, config=None):
+    
     torch.set_float32_matmul_precision('high')
-
+    
     if config is None:
         # Load the configuration file
         config_path = f'configs/{equation}/{model_name}/conf.yaml'
@@ -47,18 +59,31 @@ def main(model_name, equation, config=None):
 
     seed = config.trainer.seed
     set_seed(seed)
-    # Define parameters from the config
-    train_dataset = LidDrivenDataset(
+    
+    # Set the time indices for training and testing [Ronak - Added this]
+    t_start = config.data.time_start
+    t_end = config.data.time_end
+    n_in = config.data.time_steps_in
+    n_out = config.data.time_steps_out
+    
+    t_in, t_out = time_sampler(t_start, t_end, n_in, n_out)
+    
+    # Define parameters from the config [Ronak - Changed this]
+    train_dataset = FPODataset(
         file_path_x=config.data.file_path_train_x,
         file_path_y=config.data.file_path_train_y,
+        time_in=t_in,
+        time_out=t_out,
         data_type=config.data.type, 
         equation=config.data.equation,
         inputs=config.data.inputs
         )
     
-    test_dataset = LidDrivenDataset(
+    test_dataset = FPODataset(
         file_path_x=config.data.file_path_test_x,
         file_path_y=config.data.file_path_test_y,
+        time_in=t_in,
+        time_out=t_out,
         data_type=config.data.type, 
         equation=config.data.equation,
         inputs=config.data.inputs
@@ -103,30 +128,22 @@ def main(model_name, equation, config=None):
     print(f"Model parameters for {model_name} have been successfully set.")
 
     # Initialize the model
-    if model_name == 'fno':
-        model = FNO(**params)
-    elif model_name == 'cno':
-        model = cno(**params)
-    elif model_name == 'uno':
-        model = UNO(**params)
-    # elif model_name == 'unet':
-    #     model = UNetTrainer(**params)
-    elif model_name == 'wno':
-        model = WNO(**params)
-    elif model_name == 'deeponet':
-        model = DeepONet(**params)
-    elif model_name == 'pod-deeponet':
-        model = PODDeepONet(**params)
-    elif model_name == 'geometric-deeponet':
-        model = GeometricDeepONet(**params)
-    # elif model_name == 'oformer':
-    #     model = OFormer(**params)
-    # elif model_name == 'lsm':
-    #     model = LSMTrainer(**params)   
-    # elif model_name == 'gnot':
-    #     model = GNOT(**params)         
-    #elif model_name == 'gino':
-    #   model = GeoInformedNO(**params)         
+    # if model_name == 'fno':
+    #     model = FNO(**params)
+    # elif model_name == 'cno':
+    #     model = cno(**params)
+    # elif model_name == 'uno':
+    #     model = UNO(**params)
+    # elif model_name == 'wno':
+    #     model = WNO(**params)
+    # elif model_name == 'deeponet':
+    #     model = DeepONet(**params)
+    # elif model_name == 'pod-deeponet':
+    #     model = PODDeepONet(**params)
+    # elif model_name == 'geometric-deeponet':
+    #     model = GeometricDeepONet(**params)
+    if model_name == 'deeponet':
+        model = DeepONet(**params)        
     else:
         raise ValueError(f"Unknown model name: {model_name}")
 
@@ -148,7 +165,7 @@ def main(model_name, equation, config=None):
         filename=config.callbacks.checkpoint.filename,
         save_top_k=config.callbacks.checkpoint.save_top_k,
         mode=config.callbacks.checkpoint.mode,
-        every_n_epochs=50
+        every_n_epochs=100
     )
 
     # Define the trainer
