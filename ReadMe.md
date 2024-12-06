@@ -1,3 +1,17 @@
+## Project Status
+
+1. Data Preprocessing - Completed, Tested. Done for both Ronak [11/25/2024] and Abhisek[12/04/2024]
+2. Abhisek working on Case Studies 1 and 2 with DeepOnet [12/05/2024]
+3. Ronak working on Case Studies 3 and 4. Made code changes to DeepONet to time march the model prediction process. Testing in progress. [12/05/2024]
+
+
+## Models to consider
+
+1. DeepONet - Can use it for rectangular domains. Starting with this model.
+2. FNO - Find a way to handle rectangular domains.
+3. Poseidon/scOT - Can't handle rectangular domains. Checked with the authors. They want us to do it.
+4. CNO - Not sure about this one.
+
 ## Part 0 - Comment Request from Ethan
 
 0. The objective for the changes:
