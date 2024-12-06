@@ -1,4 +1,4 @@
-## Project Status
+## Project Journal
 
 1. Data Preprocessing - Completed, Tested. Done for both Ronak [11/25/2024] and Abhisek[12/04/2024]
 2. Abhisek working on Case Studies 1 and 2 with DeepOnet [12/05/2024]
