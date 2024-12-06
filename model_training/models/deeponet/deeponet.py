@@ -3,6 +3,9 @@ from models.base import BaseLightningModule
 from models.deeponet.network import DeepONet2D
 import torch.nn.functional as F
 from sklearn.metrics import r2_score
+import os
+import sys
+import numpy as np
 
 class DeepONet(BaseLightningModule):
     def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt'):
@@ -37,8 +40,24 @@ class DeepONet(BaseLightningModule):
             y_hat = self.model(x_store)
     
             #Save the model prediction
-            self.trainer.datamodule.save_predicted_data(y_hat, save_path = './dataset_generation/runtime_prediction_data/previous_data.npy')
+            '''
+            As model makes predictions one step at a time, we need to concatenate old predictions with the new prediction.
+            '''
+            
+            #If file doesn't exist, create a new file
+            if not os.path.exists('./dataset_generation/runtime_prediction_data/previous_data.npy'):
+                np.save('./dataset_generation/runtime_prediction_data/previous_data.npy', y_hat.cpu().detach().numpy()) 
+                
+            else:
+                #If file exists, append the new data to the second dimension of the existing data.
+                previous_data = np.load('./dataset_generation/runtime_prediction_data/previous_data.npy')
+                new_data = y_hat.cpu().detach().numpy()
+                new_data = np.concatenate((previous_data, new_data), axis=1)
+                
+                #Save the updated data
+                np.save('./dataset_generation/runtime_prediction_data/previous_data.npy', new_data)
+            
         
             #Call the update_data method of the datamodule to update the time indices for training data.
-            self.trainer.datamodule.update_data(self.trainer.current_epoch)
+            self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = 'pred')
     

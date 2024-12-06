@@ -79,7 +79,7 @@ class FPODatasetMix(Dataset):
     """
     Custom dataset for loading and processing Lid Driven Cavity problem data from .npz files.
     """
-    def __init__(self, file_path_x, file_path_xprime, file_path_y, time_in_gt, time_out_gt, time_in_pred, equation=None, data_type=None, inputs=None, geometric_deeponet=False):
+    def __init__(self, file_path_x, file_path_xprime, file_path_y, time_in_gt, time_out_gt, equation=None, data_type=None, inputs=None, geometric_deeponet=False):
         """
         Initializes the dataset with the paths to the .npz files and an optional transform.
         
@@ -96,7 +96,6 @@ class FPODatasetMix(Dataset):
         
         #Select only the time_in and time_out data
         x = x[:,time_in_gt,:,:]
-        xprime = xprime[:,time_in_pred,:,:]
         y = y[:,time_out_gt,:,:]
         
         #Concatenate x and xprime along the channel dimension
@@ -152,46 +151,61 @@ class FPODatasetMix(Dataset):
 
 
 class FPODataModule(pl.LightningDataModule):
-    def __init__(self, X_train, Y_train, X_val, Y_val, tmin, tmax, steps_in, steps_out, in_start, out_start):
+    def __init__(self, file_path_X_train, file_path_Y_train, file_path_X_val, file_path_Y_val , tmax, steps_in, steps_out, in_start, out_start):
         """
         Initializes the data module with the training and validation data.
         tmin and tmax are the time indices for the training and validation data loaded from the .npz files.
         steps_in and steps_out are the number of input and output time steps that we want to use for training.
         The idea is to have a sliding window of time steps for training and testing.
+        
+        Args:
+        
+        tmax (int): The maximum time index in the preprocessed dataset.
+        steps_in (int): The number of input time steps.
+        steps_out (int): The number of output time steps that we want to predict. Defaults to 1 when we use reuse predictions for future predictions.
+        in_start (int): The starting time index for the input data.
+        out_start (int): The starting time index for the output data.
+        
         """
         super().__init__()
-        self.X_train = X_train
-        self.Y_train = Y_train
-        self.X_val = X_val
-        self.Y_val = Y_val
-        self.tmin = tmin
+        self.file_path_X_train = file_path_X_train
+        self.file_path_Y_train = file_path_Y_train
+        self.file_path_X_val = file_path_X_val
+        self.file_path_Y_val = file_path_Y_val
         self.tmax = tmax
         self.steps_in = steps_in
         self.steps_out = steps_out
         self.in_start = in_start
         self.out_start = out_start
-        self.train_dataset = None
-        self.val_dataset = None
+        self.train_data_loader = FPODataset(self.file_path_X_train, self.file_path_Y_train, 
+                                                list(range(self.in_start, self.in_start + self.steps_in)), 
+                                                    list(range(out_start + steps_out))
+                                                        ) # Initialized with starting values but Will be updated in the update_data method
+        self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, 
+                                                list(range(self.in_start, self.in_start + self.steps_in)), 
+                                                    list(range(out_start + steps_out))
+                                                        ) # Initialized with starting values but Will be updated in the update_data method
         
         def train_dataloader(self):
-            return self.train_dataset
+            return self.train_data_loader
         
         def val_dataloader(self):
-            return self.val_dataset
-        
-        def save_predicted_data(self, predicted_data, save_path = './dataset_generation/runtime_prediction_data/previous_data.npy'):
-            """
-            Saves the predicted data to a .npy file.
-            """
-            np.save(save_path, predicted_data)
-            
+            return self.val_data_loader
         
         def update_data(self, epoch, update_type='gt'):
             
             """
             This contains the logic to create a shifting time window for training and validation data.
-            """
+            
+            Args:
+                epoch (int): The current epoch number coming from on_epoch_end.
+                update_type (str): The type of update to perform. 'gt' for ground truth update and 'pred' for prediction update.
+                Ground truth update is used when we want to train the model on the actual data without reusing predictions
+                Prediction update is used when we want to reuse the predictions from the previous time step to predict the next time step.
+            
+            """ 
             if update_type == 'gt':
+                
                 if epoch%100 == 0:
                     
                     offset = epoch//100
@@ -209,29 +223,32 @@ class FPODataModule(pl.LightningDataModule):
                         raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
                     
                     #Update the training and validation datasets with the new time window
-                    self.train_dataset = FPODataset(self.X_train, self.Y_train, self.tmin, self.tmax, t_in, t_out)
-                    self.val_dataset = FPODataset(self.X_val, self.Y_val, self.tmin, self.tmax, t_in, t_out)
+                    self.train_data_loader = FPODataset(self.file_path_X_train, self.file_path_Y_train, t_in, t_out)
+                    self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, t_in, t_out)
                     
             elif update_type == 'pred':
+                
                 if epoch % 100 == 0:
                     
                     offset = epoch//100
                     
                     # Update the time indices for training and validation data
-                    startin = self.in_start + offset
-                    startout = self.out_start + offset
+                    startin = self.in_start + offset # Move input window start point by 1 step
+                    startout = self.out_start + offset # Move output window start point by 1 step
                     
                     #Calculate the indices for the new time window
-                    t_in = np.arange(startin, startin + self.steps_in - offset)
-                    t_out = np.arange(startout, startout + self.steps_out)
+                    t_in = np.arange(startin, startin + self.steps_in - offset) # input time array will be 1 step shorter. Reusing prediction is handled in the dataloader.
+                    t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
                     
                     #Check if the new time window is within the bounds of the data
                     if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
                         raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
                     
                     #Update the training and validation datasets with the new time window
-                    self.train_dataset = FPODataset(self.X_train, self.Y_train, self.tmin, self.tmax, t_in, t_out)
-                    self.val_dataset = FPODataset(self.X_val, self.Y_val, self.tmin, self.tmax, t_in, t_out)
+                    #Update the training and validation datasets with the new time window
+                    self.train_data_loader = FPODatasetMix(self.file_path_X_train, self.file_path_Y_train, t_in, t_out)
+                    self.val_data_loader = FPODatasetMix(self.file_path_X_val, self.file_path_Y_val, t_in, t_out)
+                    
             else:
                 raise ValueError("Invalid update type. Please use 'gt'/'pred' for ground truth update.")
                 
