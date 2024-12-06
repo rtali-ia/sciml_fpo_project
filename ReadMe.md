@@ -1,4 +1,4 @@
-## Part - Comment Request from Ethan
+## Part 0 - Comment Request from Ethan
 
 0. The objective for the changes:
     - We want to time march the model prediction process so that it can reuse previous predictions to make future predictions. e.g.,
@@ -29,7 +29,7 @@
         - Performs the full range of time stepping calculations to update the dataset
         - Uses the time calculations to call the ```DataLoader``` object to update the dataset.
 
-    - Added a new ```FPODatasetMix``` dataloader that allows us to mix the current prediction with the actual data to train the model, give a set of time indices.
+    - Added a new ```FPODatasetMix``` dataloader that allows us to mix the current prediction with the actual data to train the model, given a set of time indices.
 
 ## Part - I : Data Preprocessing
 
