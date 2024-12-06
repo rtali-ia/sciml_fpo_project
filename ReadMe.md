@@ -31,7 +31,7 @@
 
     - Added a new ```FPODatasetMix``` dataloader that allows us to mix the current prediction with the actual data to train the model, given a set of time indices.
 
-## Part - I : Data Preprocessing
+## Part - I : Data Preprocessing - Status : Completed, Tested. Done
 
 0. Request an Interactive Node and activate the virtual environment on Nova:
     ```
@@ -54,7 +54,7 @@
     ./dataset_generation/fpo/out_data.npz
     ```
 
-## Part - II : Model Training
+## Part - II : Model Training - Status : Initial Code Changes Done. Finalize after Code Review
 
 0. Request an Interactive GPU Node and activate the virtual environment on Nova:
     ```
