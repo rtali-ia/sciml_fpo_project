@@ -24,21 +24,7 @@ class FPODataset(Dataset):
         #Select only the time_in and time_out data
         x = x[:,time_in,:,:]
         y = y[:,time_out,:,:]
-
-        #Sample data with 1/10th of the data
-        sampling_percentage = 0.10
-        sample_size = x.shape[0]*sampling_percentage
-        
-        #Make sure the sample size is an integer
-        sample_size = int(sample_size)
-        
-        #Randomly sample the indexes
-        indices = np.random.choice(x.shape[0], sample_size, replace=False)
-        
-        #Select the samples based on the indices
-        x = x[indices]
-        y = y[indices]
-        
+  
         if data_type == 'field':
             self.collocation = False
         elif data_type == 'collocation':
@@ -88,6 +74,83 @@ class FPODataset(Dataset):
         return grid
     
 
+
+class FPODatasetMix(Dataset):
+    """
+    Custom dataset for loading and processing Lid Driven Cavity problem data from .npz files.
+    """
+    def __init__(self, file_path_x, file_path_xprime, file_path_y, time_in_gt, time_out_gt, time_in_pred, equation=None, data_type=None, inputs=None, geometric_deeponet=False):
+        """
+        Initializes the dataset with the paths to the .npz files and an optional transform.
+        
+        Args:
+            file_path_x (str): Path to the .npz file containing the input data.
+            file_path_y (str): Path to the .npz file containing the target data.
+        """
+        
+        # Load data from .npz files
+        #Ronak - Removing ['data] as directly providing npy files
+        x = np.load(file_path_x)  # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        xprime = np.load(file_path_xprime) # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        y = np.load(file_path_y)  # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
+        
+        #Select only the time_in and time_out data
+        x = x[:,time_in_gt,:,:]
+        xprime = xprime[:,time_in_pred,:,:]
+        y = y[:,time_out_gt,:,:]
+        
+        #Concatenate x and xprime along the channel dimension
+        x = np.concatenate((x, xprime), axis=1)
+        
+        if data_type == 'field':
+            self.collocation = False
+        elif data_type == 'collocation':
+            self.collocation = True
+            self.resolution_x = x.shape[-1]
+            self.resolution_y = x.shape[-2]
+
+        # Convert numpy arrays to PyTorch tensors
+        self.x = torch.tensor(x, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+        
+
+    def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        """
+        return self.x.shape[0]
+
+    def __getitem__(self, idx):
+        """
+        Retrieves the sample and its label at the specified index.
+        
+        Args:Returns:
+            tuple: (sample, target) where sample is the input data and target is the expected output.
+        """
+        sample = self.x[idx]
+        target = self.y[idx]
+        
+        if self.collocation:
+            grid = self.get_grid()
+            sample = torch.cat((sample, grid), dim=0)
+        
+        return sample, target
+    
+    def get_grid(self):
+        # Create the uniform grid for x and y locations of the input
+        grid_x, grid_y = np.meshgrid(
+            np.linspace(0, 1, self.resolution_x), 
+            np.linspace(0, 1, self.resolution_y)
+        )
+        # Stack the grids along the last dimension to get (res, res, 2) shape
+        grid = np.stack([grid_x, grid_y], axis=-1)
+        # Transpose to get shape (2, res, res) instead of (res, res, 2)
+        grid = grid.transpose(2, 0, 1)
+        # Convert to PyTorch tensor
+        grid = torch.tensor(grid, dtype=torch.float)
+        return grid
+
+
 class FPODataModule(pl.LightningDataModule):
     def __init__(self, X_train, Y_train, X_val, Y_val, tmin, tmax, steps_in, steps_out, in_start, out_start):
         """
@@ -116,11 +179,11 @@ class FPODataModule(pl.LightningDataModule):
         def val_dataloader(self):
             return self.val_dataset
         
-        def save_predicted_data(self, predicted_data, save_path = './dataset_generation/runtime_prediction_data/previous_data.npz'):
+        def save_predicted_data(self, predicted_data, save_path = './dataset_generation/runtime_prediction_data/previous_data.npy'):
             """
-            Saves the predicted data to a .npz file.
+            Saves the predicted data to a .npy file.
             """
-            np.savez(save_path, predicted_data)
+            np.save(save_path, predicted_data)
             
         
         def update_data(self, epoch, update_type='gt'):
@@ -159,7 +222,7 @@ class FPODataModule(pl.LightningDataModule):
                     startout = self.out_start + offset
                     
                     #Calculate the indices for the new time window
-                    t_in = np.arange(startin, startin + self.steps_in)
+                    t_in = np.arange(startin, startin + self.steps_in - offset)
                     t_out = np.arange(startout, startout + self.steps_out)
                     
                     #Check if the new time window is within the bounds of the data
