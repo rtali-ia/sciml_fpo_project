@@ -2,11 +2,11 @@
 
 0. The objective for the changes:
     - We want to time march the model prediction process so that it can reuse previous predictions to make future predictions. e.g.,
-        a. Train x1, x2, x3, x4, x5 -> x6
-        b. Train x2, x3, x4, x5, x6* -> x7
-        c. Train x3, x4, x5, x6*, x7* -> x8
-        d. Train x4, x5, x6*, x7*, x8* -> x9
-        e. Train x5, x6*, x7*, x8*, x9* -> x10
+        - Train x1, x2, x3, x4, x5 -> x6
+        - Train x2, x3, x4, x5, x6* -> x7
+        - Train x3, x4, x5, x6*, x7* -> x8
+        - Train x4, x5, x6*, x7*, x8* -> x9
+        - Train x5, x6*, x7*, x8*, x9* -> x10
 
     Here x6*, x7*, x8*, x9* are the past predictions made by the model. The model should be able to reuse these predictions to make future predictions.
 
