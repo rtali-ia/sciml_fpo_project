@@ -84,11 +84,12 @@ def data_download(root_data_dir : str, root_geometry_dir : str, res_x : int, res
         #Read the geometry and reynolds number from the path
         sdf_data = file.split('/')[-2]
         reynolds_number = file.split('/')[-1]
+        load_file = reynolds_number
         reynolds_number = reynolds_number.split('_')[-1]
         reynolds_number = reynolds_number.split('.')[0]
         
         #Load the geometry data
-        geometry_data = np.load(root_geometry_dir + '/sdf_'+sdf_data+'.npz')['data']
+        geometry_data = np.load(root_geometry_dir + '/'+ sdf_data + '/' +'/input_geometry.npz')['data']
         #Scale the geometry data to the resolution of the flow data
         scale = geometry_data.shape[1] // res_x
         geometry_data = geometry_data[::scale, ::scale]
