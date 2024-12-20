@@ -1,5 +1,6 @@
 dataset_generation/fpo/
 dataset_generation/__pycache__/
+downloaded_folder/
 checker.py
 models/__pycache__/
 models/fno/__pycache__/
@@ -7,3 +8,4 @@ models/deeponet/__pycache__/
 models/scOT/__pycache__/
 wandb/
 model_training/__pycache__/
+downloaded_folder/FPO_NS_2D_1024x256/harmonics/1/input_geometry.npz

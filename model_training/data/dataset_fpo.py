@@ -18,12 +18,12 @@ class FPODataset(Dataset):
         
         # Load data from .npz files
         #Ronak - Removing ['data] as directly providing npy files
-        x = np.load(file_path_x)  # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
-        y = np.load(file_path_y)  # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
+        x = np.load(file_path_x, mmap_mode='r')  # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        y = np.load(file_path_y, mmap_mode='r')  # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
         
         #Select only the time_in and time_out data
-        x = x[:,time_in,:,:]
-        y = y[:,time_out,:,:]
+        x = x[:,time_in,:,:].copy()
+        y = y[:,time_out,:,:].copy()
   
         if data_type == 'field':
             self.collocation = False

@@ -10,7 +10,7 @@ if __name__ == '__main__':
     logger = setup_logger(log_file_name, level=logging.INFO)
     
    # Read settings from config file (./data.ini)
-    INI_FILE_PATH = '/work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/data.ini'
+    INI_FILE_PATH = './data.ini'
     in_time_steps, out_time_steps = read_time_steps(INI_FILE_PATH)
     pct_samples, res_x, res_y, root_data_dir, root_geometry_dir = read_data_settings(INI_FILE_PATH)
     
