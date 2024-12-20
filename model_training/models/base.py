@@ -11,6 +11,9 @@ class BaseLightningModule(pl.LightningModule):
         self.plot_path = plot_path
         self.log_file = log_file
 
+        # Add storage for batch data
+        self.epoch_predictions = []
+
     def forward(self):
         pass
 
@@ -18,6 +21,8 @@ class BaseLightningModule(pl.LightningModule):
         return torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
     def training_step(self, batch):
+        self.current_batch = batch
+
         x, y = batch
         # apply object boundary to prediction before computing loss
         y_hat = self(x)
@@ -29,6 +34,11 @@ class BaseLightningModule(pl.LightningModule):
 
         loss = self.loss(y_hat, y)
         self.log('train_loss', loss)
+
+        # Store predictions during training
+        if self.current_epoch > 0 and self.current_epoch % 100 == 0:
+            self.epoch_predictions.append(y_hat.cpu().detach())
+
         return loss
     
     def validation_step(self, batch):
@@ -89,5 +99,14 @@ class BaseLightningModule(pl.LightningModule):
             loss_names = ['full','u', 'v', 'p', 't']
         if y_hat.shape[1] == 8:    # uvptc for ns+ht
             loss_names = ['full','x0', 'y0', 'z0', 'theta', 'phi', 'a', 'b','c']
+        else:    # uvpt for ns+ht
+            # Generate loss names with numbered components
+            # Abhisek - better way of handing fpo need
+            loss_names = ['full']
+            num_sets = y_hat.shape[1]//3  # For components 1-10
+            components = ['u', 'v', 'p']
+            for i in range(1, num_sets + 1):
+                for comp in components:
+                    loss_names.append(f'{comp}{i}')
           
         return losses

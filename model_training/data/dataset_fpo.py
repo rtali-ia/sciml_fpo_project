@@ -15,15 +15,18 @@ class FPODataset(Dataset):
             file_path_x (str): Path to the .npz file containing the input data.
             file_path_y (str): Path to the .npz file containing the target data.
         """
+        self.collocation = False
         
         # Load data from .npz files
+        x_indices = [0,1,2] + [3 + t*3 + i for t in time_in for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        y_indices = [t*3 + i for t in time_out for i in range(3)] # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
+
         #Ronak - Removing ['data] as directly providing npy files
-        x = np.load(file_path_x)  # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
-        y = np.load(file_path_y)  # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
-        
-        #Select only the time_in and time_out data
-        x = x[:,time_in,:,:]
-        y = y[:,time_out,:,:]
+        with np.load(file_path_x, mmap_mode='r') as data:
+            x = data['arr_0'][:,x_indices,:,:].copy()
+
+        with np.load(file_path_y, mmap_mode='r') as data:
+            y = data['arr_0'][:,y_indices,:,:].copy()
   
         if data_type == 'field':
             self.collocation = False
@@ -72,8 +75,6 @@ class FPODataset(Dataset):
         # Convert to PyTorch tensor
         grid = torch.tensor(grid, dtype=torch.float)
         return grid
-    
-
 
 class FPODatasetMix(Dataset):
     """
@@ -89,14 +90,18 @@ class FPODatasetMix(Dataset):
         """
         
         # Load data from .npz files
+        # Load data from .npz files
+        x_indices = [0,1,2] + [3 + t*3 + i for t in time_in_gt for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        y_indices = [t*3 + i for t in time_out_gt for i in range(3)] # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
+
         #Ronak - Removing ['data] as directly providing npy files
-        x = np.load(file_path_x)  # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
-        xprime = np.load(file_path_xprime) # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
-        y = np.load(file_path_y)  # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
-        
-        #Select only the time_in and time_out data
-        x = x[:,time_in_gt,:,:]
-        y = y[:,time_out_gt,:,:]
+        with np.load(file_path_x, mmap_mode='r') as data:
+            x = data['arr_0'][:,x_indices,:,:].copy()
+
+        with np.load(file_path_y, mmap_mode='r') as data:
+            y = data['arr_0'][:,y_indices,:,:].copy()
+
+        xprime = np.load(file_path_xprime)
         
         #Concatenate x and xprime along the channel dimension
         x = np.concatenate((x, xprime), axis=1)
@@ -148,10 +153,10 @@ class FPODatasetMix(Dataset):
         # Convert to PyTorch tensor
         grid = torch.tensor(grid, dtype=torch.float)
         return grid
-
+    
 
 class FPODataModule(pl.LightningDataModule):
-    def __init__(self, file_path_X_train, file_path_Y_train, file_path_X_val, file_path_Y_val , tmax, steps_in, steps_out, in_start, out_start):
+    def __init__(self, file_path_X_train, file_path_Y_train, file_path_X_val, file_path_Y_val , tmax, steps_in, steps_out, in_start, out_start, batch_size=4, shuffle=False, num_workers=4):
         """
         Initializes the data module with the training and validation data.
         tmin and tmax are the time indices for the training and validation data loaded from the .npz files.
@@ -177,82 +182,92 @@ class FPODataModule(pl.LightningDataModule):
         self.steps_out = steps_out
         self.in_start = in_start
         self.out_start = out_start
+
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.num_workers = num_workers
+
         self.train_data_loader = FPODataset(self.file_path_X_train, self.file_path_Y_train, 
                                                 list(range(self.in_start, self.in_start + self.steps_in)), 
-                                                    list(range(out_start + steps_out))
-                                                        ) # Initialized with starting values but Will be updated in the update_data method
+                                                list(range(self.out_start, self.out_start + self.steps_out)), data_type='collocation'
+                                                ) # Initialized with starting values but Will be updated in the update_data method
         self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, 
                                                 list(range(self.in_start, self.in_start + self.steps_in)), 
-                                                    list(range(out_start + steps_out))
-                                                        ) # Initialized with starting values but Will be updated in the update_data method
+                                                list(range(self.out_start, self.out_start + self.steps_out)),data_type='collocation'
+                                                ) # Initialized with starting values but Will be updated in the update_data method
         
-        def train_dataloader(self):
-            return self.train_data_loader
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_data_loader,
+            batch_size=self.batch_size,
+            shuffle=self.shuffle,
+            num_workers=self.num_workers
+        )
+    
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_data_loader,
+            batch_size=self.batch_size,
+            shuffle=self.shuffle,
+            num_workers=self.num_workers
+        )
+    
+    def update_data(self, epoch, update_type='gt', file_path_xprime = None):
         
-        def val_dataloader(self):
-            return self.val_data_loader
+        """
+        This contains the logic to create a shifting time window for training and validation data.
         
-        def update_data(self, epoch, update_type='gt'):
+        Args:
+            epoch (int): The current epoch number coming from on_epoch_end.
+            update_type (str): The type of update to perform. 'gt' for ground truth update and 'pred' for prediction update.
+            Ground truth update is used when we want to train the model on the actual data without reusing predictions
+            Prediction update is used when we want to reuse the predictions from the previous time step to predict the next time step.
+        
+        """ 
+        if update_type == 'gt':
             
-            """
-            This contains the logic to create a shifting time window for training and validation data.
-            
-            Args:
-                epoch (int): The current epoch number coming from on_epoch_end.
-                update_type (str): The type of update to perform. 'gt' for ground truth update and 'pred' for prediction update.
-                Ground truth update is used when we want to train the model on the actual data without reusing predictions
-                Prediction update is used when we want to reuse the predictions from the previous time step to predict the next time step.
-            
-            """ 
-            if update_type == 'gt':
+            if epoch > 0 and epoch % 100 == 0:
                 
-                if epoch%100 == 0:
-                    
-                    offset = epoch//100
-                    
-                    # Update the time indices for training and validation data
-                    startin = self.in_start + offset
-                    startout = self.out_start + offset
-                    
-                    #Calculate the indices for the new time window
-                    t_in = np.arange(startin, startin + self.steps_in )
-                    t_out = np.arange(startout, startout + self.steps_out)
-                    
-                    #Check if the new time window is within the bounds of the data
-                    if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
-                        raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
-                    
-                    #Update the training and validation datasets with the new time window
-                    self.train_data_loader = FPODataset(self.file_path_X_train, self.file_path_Y_train, t_in, t_out)
-                    self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, t_in, t_out)
-                    
-            elif update_type == 'pred':
+                offset = epoch//100
                 
-                if epoch % 100 == 0:
-                    
-                    offset = epoch//100
-                    
-                    # Update the time indices for training and validation data
-                    startin = self.in_start + offset # Move input window start point by 1 step
-                    startout = self.out_start + offset # Move output window start point by 1 step
-                    
-                    #Calculate the indices for the new time window
-                    t_in = np.arange(startin, startin + self.steps_in - offset) # input time array will be 1 step shorter. Reusing prediction is handled in the dataloader.
-                    t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
-                    
-                    #Check if the new time window is within the bounds of the data
-                    if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
-                        raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
-                    
-                    #Update the training and validation datasets with the new time window
-                    #Update the training and validation datasets with the new time window
-                    self.train_data_loader = FPODatasetMix(self.file_path_X_train, self.file_path_Y_train, t_in, t_out)
-                    self.val_data_loader = FPODatasetMix(self.file_path_X_val, self.file_path_Y_val, t_in, t_out)
-                    
-            else:
-                raise ValueError("Invalid update type. Please use 'gt'/'pred' for ground truth update.")
+                # Update the time indices for training and validation data
+                startin = self.in_start + offset
+                startout = self.out_start + offset
                 
+                #Calculate the indices for the new time window
+                t_in = np.arange(startin, startin + self.steps_in )
+                t_out = np.arange(startout, startout + self.steps_out)
                 
-        
-        
-        
+                #Check if the new time window is within the bounds of the data
+                if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
+                    raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
+                
+                #Update the training and validation datasets with the new time window
+                self.train_data_loader = FPODataset(self.file_path_X_train, self.file_path_Y_train, t_in, t_out, data_type='collocation')
+                self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, t_in, t_out, data_type='collocation')
+                
+        elif update_type == 'pred':
+                
+            if epoch > 0 and epoch % 100 == 0:
+                if file_path_xprime == None:
+                    raise ValueError("Invalid xprime path type. Please provide path for train and val dataset for xprime")
+                
+                offset = epoch//100
+                
+                # Update the time indices for training and validation data
+                startin = self.in_start + offset # Move input window start point by 1 step
+                startout = self.out_start + offset # Move output window start point by 1 step
+                
+                #Calculate the indices for the new time window
+                t_in = np.arange(startin, startin + self.steps_in - offset) # input time array will be 1 step shorter. Reusing prediction is handled in the dataloader.
+                t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
+                
+                #Check if the new time window is within the bounds of the data
+                if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
+                    raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
+                
+                #Update the training and validation datasets with the new time window
+                self.train_data_loader = FPODatasetMix(self.file_path_X_train, file_path_xprime, self.file_path_Y_train, t_in, t_out, data_type='collocation')
+                self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, t_in, t_out, data_type='collocation')
+        else:
+            raise ValueError("Invalid update type. Please use 'gt'/'pred' for ground truth update.")
