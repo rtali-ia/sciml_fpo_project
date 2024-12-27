@@ -32,7 +32,6 @@ class DeepONet(BaseLightningModule):
         #Method called at the end of the training epoch. We want to save the model prediction and update the time indices for training data every 100 epochs.
         #Save the model prediction if the epoch is a multiple of 100
         if self.current_epoch > 0 and self.current_epoch % 100 == 0:
-            print("len(self.epoch_predictions) :", len(self.epoch_predictions))
             if len(self.epoch_predictions) > 0:
                 all_predictions = np.concatenate(self.epoch_predictions, axis=0)
                 predictions_numpy = all_predictions
