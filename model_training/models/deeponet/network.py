@@ -18,13 +18,16 @@ class LinearMLP(nn.Module):
 
 
 class DeepONet2D(nn.Module):
-    def __init__(self, input_channels_func, input_channels_loc, output_channels, modes, branch_net_layers=None, trunk_net_layers=None):
+    def __init__(self, input_channels_func, input_channels_loc, output_channels, modes, 
+                 height=256, width=1024, branch_net_layers=None, trunk_net_layers=None):
         super().__init__()
         
         self.input_channels_func = input_channels_func     # [Re, SDF, Mask]
         self.input_channels_loc = input_channels_loc       # [x, y]
         self.output_channels = output_channels            # [u,v,p,cd,cl]
         self.modes = modes
+        self.height = height
+        self.width = width
         
         self.branch_net_layers = [self.input_channels_func] + branch_net_layers + [self.modes*self.output_channels]
         self.branch = LinearMLP(dims=self.branch_net_layers, nonlin=nn.ReLU)
@@ -61,7 +64,6 @@ class DeepONet2D(nn.Module):
         m - modes
         p - num_pts (h*w)
         '''
-        
         x1_flattened = rearrange(x1, 'b c h w -> b (h w) c')
         x2_flattened = rearrange(x2, 'b c h w -> b (h w) c')
         
@@ -77,7 +79,8 @@ class DeepONet2D(nn.Module):
         output_solution = output_solution + self.b
         
         # reshape so output is of shape [batch, c, h, w] for loss function in pl.lightning
-        output_solution = rearrange(output_solution, 'b (h w) c -> b c h w', h=x1.shape[-1], w=x1.shape[-1], c=self.output_channels)
+        output_solution = rearrange(output_solution, 'b (h w) c -> b c h w', 
+                                  h=self.height, w=self.width, c=self.output_channels)
         return output_solution
     
     
