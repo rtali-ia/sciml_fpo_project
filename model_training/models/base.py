@@ -5,11 +5,13 @@ from sklearn.metrics import r2_score
 
 
 class BaseLightningModule(pl.LightningModule):
-    def __init__(self, lr, plot_path, log_file, **kwargs):
+    def __init__(self, lr, plot_path, log_file, data_update_epoch, data_update_step, **kwargs):
         super(BaseLightningModule, self).__init__()
         self.lr = lr
         self.plot_path = plot_path
         self.log_file = log_file
+        self.data_update_epoch = data_update_epoch
+        self.data_update_step = data_update_step
 
         # Add storage for batch data
         self.epoch_predictions = []
