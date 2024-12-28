@@ -55,7 +55,9 @@ if __name__ == '__main__':
     logger.info('Subset the data based on the percentage of samples specified in the config file - Done')
     
     #Save the data to npz files
-    np.savez_compressed('./dataset_generation/fpo/in_data.npz', in_data)
-    np.savez_compressed('./dataset_generation/fpo/out_data.npz', out_data)
+    save_path = '../dataset_generation/fpo/'
+    os.makedirs(save_path, exist_ok=True)
+    np.savez_compressed(os.path.join(base_dir, 'in_data.npz'), in_data)
+    np.savez_compressed(os.path.join(base_dir, 'out_data.npz'), out_data)
     
     logger.info('Saved the sampled data to npz files - Done')

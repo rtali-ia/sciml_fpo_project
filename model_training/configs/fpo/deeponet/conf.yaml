@@ -1,61 +1,32 @@
-callbacks:
-  checkpoint:
-    dirpath: ./checkpoints/nurbs/
-    filename: deeponet-{epoch:02d}-{val_loss:.6f}
-    mode: min
-    monitor: val_loss_full
-    save_top_k: 1
-  early_stopping:
-    monitor: val_loss_full
-    patience: 1000
-  validation_logging:
-    plot_path: ./plots/
 data:
-  batch_size: 8
-  equation: fpo
-  time_start: 1
-  time_end: 8
-  time_steps_in: 2
-  time_steps_out: 2 
-  file_path_test_x: /work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/LDC_NSHT_2D/fpo/
-  file_path_test_y: /work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/LDC_NSHT_2D/fpo/
-  file_path_train_x: /work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/LDC_NSHT_2D/fpo/
-  file_path_train_y: /work/mech-ai/rtali/projects/sciml_fpo_project/dataset_generation/LDC_NSHT_2D/fpo/
-  inputs: sdf
-  shuffle: true
-  subsample: false
-  train_split: 0.8
-  type: collocation
-  val_split: 0.2
-model:
-  branch_net_layers:
-  - 512
-  - 512
-  - 512
-  in_channels: 3
-  input_channels_func: 2
-  input_channels_loc: 2
-  log_file: log_deeponet_lr=0.001_batch=5.txt
-  lr: 0.0001
-  modes: 128
-  out_channels: 4
-  output_channels: 5
-  plot_path: ../plots/deeponet/nurbs/easy
-  trunk_net_layers:
-  - 256
-  - 256
-  - 256
-sweep_parameters:
-  seed:
-    values:
-    - 0
-    - 10
-    - 20
-    - 30
-    - 40
+  file_path_train_x: "/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/X_train_new_batch.npz"
+  file_path_train_y: "/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/Y_train_new_batch.npz"
+  tmax: 5
+  in_start: 0
+  out_start: 1
+  batch_size: 4
+
 trainer:
+  seed: 0
+  epoch_per_timestep: 100
+  delta_time_step: 1
   accelerator: gpu
   devices: 1
   log_every_n_steps: 10
-  max_epochs: 200
-  seed: 0
+
+model:
+  steps_in: 3
+  steps_out: 1
+  branch_net_layers: [512, 512, 512]
+  trunk_net_layers: [256, 256, 256]
+  modes: 128
+  input_channels_loc: 2
+
+callbacks:
+  checkpoint: checkpoints
+  filename: fpo-{epoch:02d}-{val_loss:.4f}
+  monitor: val_r2_score_full
+  mode: min
+  save_top_k: 3
+  every_n_epochs: 50
+  save_last: true

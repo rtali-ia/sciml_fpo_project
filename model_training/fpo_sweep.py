@@ -23,41 +23,8 @@ def set_seed(seed):
 def main(model_name, equation, config=None):
     torch.set_float32_matmul_precision('high')
 
-    config = {
-        "data": {
-            "file_path_train_x": "/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/X_train_new_batch.npz",
-            "file_path_train_y": "/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/Y_train_new_batch.npz",
-            "tmax": 5,
-            "in_start": 0,
-            "out_start": 1,
-            "batch_size": 4
-        },
-        "trainer": {
-            "seed": 0,
-            "epoch_per_timestep":100,
-            "delta_time_step": 1,
-            "accelerator": 'gpu',
-            "devices": 1,
-            "log_every_n_steps": 10
-        },
-        "model": {
-            "steps_in": 3,
-            "steps_out": 1,
-            "branch_net_layers": [512, 512, 512],
-            "trunk_net_layers": [256, 256, 256],
-            "modes": 128,
-            "input_channels_loc": 2
-        },
-        "callbacks": {
-            "checkpoint": 'checkpoints',
-            "filename": 'fpo-{epoch:02d}-{val_loss:.4f}',
-            "monitor": 'val_r2_score_full',
-            "mode": 'min',
-            "save_top_k": 3,
-            "every_n_epochs": 50,
-            "save_last": True
-        }
-    }
+    config_path = '/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/configs/fpo/deeponet/conf.yaml'
+    config = OmegaConf.load(config_path)
 
     # Convert dictionary to OmegaConf
     config = OmegaConf.create(config)
