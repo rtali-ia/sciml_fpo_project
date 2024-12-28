@@ -9,19 +9,8 @@ import numpy as np
 import torch
 
 class DeepONet(BaseLightningModule):
-    def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt',  data_update_epoch = 100, data_update_step = 1):
-        super(DeepONet, self).__init__(lr=lr, plot_path=plot_path, log_file=log_file, data_update_epoch = data_update_epoch, data_update_step = data_update_step)
-
-        # Get unique ID for this run
-        if hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "id"):
-            print("Wandb ID used")
-            self.run_id = self.logger.experiment.id
-        else:
-            print("Random ID used")
-            timestamp = int(time.time())
-            random_suffix = random.randint(1000, 9999)
-            self.run_id = f"{timestamp}_{random_suffix}"
-        
+    def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt',  epoch_per_timestep = 100, delta_time_step = 1):
+        super(DeepONet, self).__init__(lr=lr, plot_path=plot_path, log_file=log_file, epoch_per_timestep = epoch_per_timestep, delta_time_step = delta_time_step)        
 
         self.input_channels_func = input_channels_func
         self.input_channels_loc = input_channels_loc
@@ -44,7 +33,7 @@ class DeepONet(BaseLightningModule):
     def on_train_epoch_end(self): # Ronak - Added this. Will move it later to base.py
         #Method called at the end of the training epoch. We want to save the model prediction and update the time indices for training data every 100 epochs.
         #Save the model prediction if the epoch is a multiple of 100
-        if self.current_epoch > 0 and self.current_epoch % self.data_update_epoch == 0:
+        if self.current_epoch > 0 and self.current_epoch % self.epoch_per_timestep == 0:
             if len(self.epoch_predictions) > 0:
                 all_predictions = np.concatenate(self.epoch_predictions, axis=0)
                 predictions_numpy = all_predictions
@@ -52,10 +41,10 @@ class DeepONet(BaseLightningModule):
                 self.epoch_predictions = []
 
                 filename = f'previous_data_{self.run_id}.npy'
-                save_path = os.path.join('./dataset_generation/runtime_prediction_data', filename)
+                save_path = os.path.join('../dataset_generation/runtime_prediction_data', filename)
 
                 if not os.path.exists(save_path):
-                    os.makedirs('./dataset_generation/runtime_prediction_data', exist_ok=True)#make this dynamic
+                    os.makedirs('../dataset_generation/runtime_prediction_data', exist_ok=True)#make this dynamic
                     np.save(save_path, predictions_numpy)
                 else:
                     #If file exists, append the new data to the second dimension of the existing data.
@@ -68,4 +57,4 @@ class DeepONet(BaseLightningModule):
             
         
             #Call the update_data method of the datamodule to update the time indices for training data.
-            self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = 'pred', file_path_xprime=save_path, data_update_epoch = self.data_update_epoch, data_update_step = self.data_update_step)
+            self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = 'pred', file_path_xprime=save_path, epoch_per_timestep = self.epoch_per_timestep, delta_time_step = self.delta_time_step)

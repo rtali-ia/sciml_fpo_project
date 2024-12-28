@@ -2,19 +2,31 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from sklearn.metrics import r2_score
+import time
 
 
 class BaseLightningModule(pl.LightningModule):
-    def __init__(self, lr, plot_path, log_file, data_update_epoch, data_update_step, **kwargs):
+    def __init__(self, lr, plot_path, log_file, epoch_per_timestep, delta_time_step, **kwargs):
         super(BaseLightningModule, self).__init__()
+        
         self.lr = lr
         self.plot_path = plot_path
         self.log_file = log_file
-        self.data_update_epoch = data_update_epoch
-        self.data_update_step = data_update_step
+        self.epoch_per_timestep = epoch_per_timestep
+        self.delta_time_step = delta_time_step
 
         # Add storage for batch data
         self.epoch_predictions = []
+    
+    def setup(self, stage=None):
+        if hasattr(self.logger, "experiment") and hasattr(self.logger.experiment, "id"):
+            self.run_id = self.logger.experiment.id
+            print("Wandb ID used")
+        else:
+            timestamp = int(time.time())
+            random_suffix = random.randint(1000, 9999)
+            self.run_id = f"{timestamp}_{random_suffix}"
+            print("Random ID used")
 
     def forward(self):
         pass
