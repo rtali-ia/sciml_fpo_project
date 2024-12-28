@@ -33,7 +33,7 @@ class DeepONet(BaseLightningModule):
     def on_train_epoch_end(self): # Ronak - Added this. Will move it later to base.py
         #Method called at the end of the training epoch. We want to save the model prediction and update the time indices for training data every 100 epochs.
         #Save the model prediction if the epoch is a multiple of 100
-        if self.current_epoch > 0 and self.current_epoch % self.epoch_per_timestep == 0:
+        if (self.current_epoch +1) % self.epoch_per_timestep == 0:
             if len(self.epoch_predictions) > 0:
                 all_predictions = np.concatenate(self.epoch_predictions, axis=0)
                 predictions_numpy = all_predictions

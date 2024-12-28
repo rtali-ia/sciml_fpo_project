@@ -226,9 +226,9 @@ class FPODataModule(pl.LightningDataModule):
         """ 
         if update_type == 'gt':
             
-            if epoch > 0 and epoch % epoch_per_timestep == 0:
+            if (epoch+1) % epoch_per_timestep == 0:
                 
-                offset = (epoch//epoch_per_timestep) * delta_time_step
+                offset = ((epoch + 1)//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset
@@ -237,6 +237,10 @@ class FPODataModule(pl.LightningDataModule):
                 #Calculate the indices for the new time window
                 t_in = np.arange(startin, startin + self.steps_in )
                 t_out = np.arange(startout, startout + self.steps_out)
+                print("Data Load Epoch: ", epoch)
+                print("Raw Dataset time in:", t_in)
+                print("Dataset time out:", t_out)
+
                 
                 #Check if the new time window is within the bounds of the data
                 if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
@@ -248,11 +252,11 @@ class FPODataModule(pl.LightningDataModule):
                 
         elif update_type == 'pred':
                 
-            if epoch > 0 and epoch % epoch_per_timestep == 0:
+            if (epoch + 1) > 0 and epoch % epoch_per_timestep == 0:
                 if file_path_xprime == None:
                     raise ValueError("Invalid xprime path type. Please provide path for train and val dataset for xprime")
                 
-                offset = (epoch//epoch_per_timestep) * delta_time_step
+                offset = ((epoch + 1)//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset # Move input window start point by 1 step
@@ -261,6 +265,9 @@ class FPODataModule(pl.LightningDataModule):
                 #Calculate the indices for the new time window
                 t_in = np.arange(startin, startin + self.steps_in - offset) # input time array will be 1 step shorter. Reusing prediction is handled in the dataloader.
                 t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
+                print("Data Load Epoch: ", epoch)
+                print("Raw Dataset time in:", t_in)
+                print("Dataset time out:", t_out)
                 
                 #Check if the new time window is within the bounds of the data
                 if t_in[-1] > self.tmax or t_out[-1] > self.tmax:

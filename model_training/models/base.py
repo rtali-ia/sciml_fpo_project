@@ -50,7 +50,7 @@ class BaseLightningModule(pl.LightningModule):
         self.log('train_loss', loss)
 
         # Store predictions during training
-        if self.current_epoch > 0 and self.current_epoch % 100 == 0:
+        if (self.current_epoch + 1) % self.epoch_per_timestep  == 0:
             self.epoch_predictions.append(y_hat.cpu().detach())
 
         return loss
