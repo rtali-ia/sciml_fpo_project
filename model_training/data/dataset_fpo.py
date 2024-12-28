@@ -212,7 +212,7 @@ class FPODataModule(pl.LightningDataModule):
             num_workers=self.num_workers
         )
     
-    def update_data(self, epoch, update_type='gt', file_path_xprime = None, data_update_epoch = 100, data_update_step = 1):
+    def update_data(self, epoch, update_type='gt', file_path_xprime = None, epoch_per_timestep = 100, delta_time_step = 1):
         
         """
         This contains the logic to create a shifting time window for training and validation data.
@@ -226,9 +226,9 @@ class FPODataModule(pl.LightningDataModule):
         """ 
         if update_type == 'gt':
             
-            if epoch > 0 and epoch % data_update_epoch == 0:
+            if epoch > 0 and epoch % epoch_per_timestep == 0:
                 
-                offset = (epoch//data_update_epoch) * data_update_step
+                offset = (epoch//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset
@@ -248,11 +248,11 @@ class FPODataModule(pl.LightningDataModule):
                 
         elif update_type == 'pred':
                 
-            if epoch > 0 and epoch % data_update_epoch == 0:
+            if epoch > 0 and epoch % epoch_per_timestep == 0:
                 if file_path_xprime == None:
                     raise ValueError("Invalid xprime path type. Please provide path for train and val dataset for xprime")
                 
-                offset = (epoch//data_update_epoch) * data_update_step
+                offset = (epoch//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset # Move input window start point by 1 step

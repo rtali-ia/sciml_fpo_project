@@ -34,7 +34,8 @@ def main(model_name, equation, config=None):
         },
         "trainer": {
             "seed": 0,
-            "max_epochs": 200,
+            "epoch_per_timestep":100,
+            "delta_time_step": 1,
             "accelerator": 'gpu',
             "devices": 1,
             "log_every_n_steps": 10
@@ -53,7 +54,7 @@ def main(model_name, equation, config=None):
             "monitor": 'val_r2_score_full',
             "mode": 'min',
             "save_top_k": 3,
-            "every_n_epochs": 100,
+            "every_n_epochs": 50,
             "save_last": True
         }
     }
@@ -94,7 +95,9 @@ def main(model_name, equation, config=None):
         out_channels=config.model.steps_out * 3,
         branch_net_layers=config.model.branch_net_layers,
         trunk_net_layers=config.model.trunk_net_layers,
-        modes=config.model.modes
+        modes=config.model.modes,
+        epoch_per_timestep = config.trainer.epoch_per_timestep, 
+        delta_time_step = config.trainer.delta_time_step
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -107,8 +110,10 @@ def main(model_name, equation, config=None):
         save_last=config.callbacks.save_last
     )
 
+    max_steps = ((config["data"]["tmax"] - max(config["data"]["in_start"] + config["model"]["steps_in"], config["data"]["out_start"] + config["model"]["steps_out"])) // config["trainer"]["delta_time_step"]) + 1
+
     trainer = pl.Trainer(
-        max_epochs=config.trainer.max_epochs,
+        max_epochs=config.trainer.epoch_per_timestep*max_steps,
         accelerator=config.trainer.accelerator,
         devices=config.trainer.devices,
         callbacks=[checkpoint_callback],
