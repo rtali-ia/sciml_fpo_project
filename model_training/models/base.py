@@ -6,7 +6,7 @@ import time
 
 
 class BaseLightningModule(pl.LightningModule):
-    def __init__(self, lr, plot_path, log_file, epoch_per_timestep, delta_time_step, **kwargs):
+    def __init__(self, lr, plot_path, log_file, epoch_per_timestep, delta_time_step, update_mode, **kwargs):
         super(BaseLightningModule, self).__init__()
         
         self.lr = lr
@@ -14,6 +14,7 @@ class BaseLightningModule(pl.LightningModule):
         self.log_file = log_file
         self.epoch_per_timestep = epoch_per_timestep
         self.delta_time_step = delta_time_step
+        self.update_mode = update_mode
 
         # Add storage for batch data
         self.epoch_predictions = []

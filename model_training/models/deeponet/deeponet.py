@@ -9,8 +9,8 @@ import numpy as np
 import torch
 
 class DeepONet(BaseLightningModule):
-    def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt',  epoch_per_timestep = 100, delta_time_step = 1):
-        super(DeepONet, self).__init__(lr=lr, plot_path=plot_path, log_file=log_file, epoch_per_timestep = epoch_per_timestep, delta_time_step = delta_time_step)        
+    def __init__(self, input_channels_func, input_channels_loc, out_channels, branch_net_layers, trunk_net_layers, modes, loss=nn.MSELoss(), lr=1e-4, plot_path='./plots/', log_file='DeepONet_log.txt',  epoch_per_timestep = 100, delta_time_step = 1, update_mode = 'gt'):
+        super(DeepONet, self).__init__(lr=lr, plot_path=plot_path, log_file=log_file, epoch_per_timestep = epoch_per_timestep, delta_time_step = delta_time_step, update_mode = update_mode)        
 
         self.input_channels_func = input_channels_func
         self.input_channels_loc = input_channels_loc
@@ -54,7 +54,6 @@ class DeepONet(BaseLightningModule):
                     
                     #Save the updated data
                     np.save(save_path, new_data)
-            
-        
-            #Call the update_data method of the datamodule to update the time indices for training data.
-            self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = 'pred', file_path_xprime=save_path, epoch_per_timestep = self.epoch_per_timestep, delta_time_step = self.delta_time_step)
+                    
+                #Call the update_data method of the datamodule to update the time indices for training data.
+                self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = self.update_mode, file_path_xprime=save_path, epoch_per_timestep = self.epoch_per_timestep, delta_time_step = self.delta_time_step)

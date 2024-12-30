@@ -15,6 +15,7 @@
 # Load necessary modules (if required by your cluster)
 module purge
 
+export WANDB_DATA_DIR=/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/wandb/.local/share/
 export WANDB_CACHE_DIR=/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/wandb/.cache/
 
 # Run Singularity with overlay and CUDA-enabled container
