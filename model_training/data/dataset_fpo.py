@@ -18,7 +18,7 @@ class FPODataset(Dataset):
         self.collocation = False
         
         # Load data from .npz files
-        x_indices = [0,1,2] + [3 + t*3 + i for t in time_in for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        x_indices = [0,1] + [2 + t*3 + i for t in time_in for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
         y_indices = [t*3 + i for t in time_out for i in range(3)] # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
 
         #Ronak - Removing ['data] as directly providing npy files
@@ -91,7 +91,7 @@ class FPODatasetMix(Dataset):
         
         # Load data from .npz files
         # Load data from .npz files
-        x_indices = [0,1,2] + [3 + t*3 + i for t in time_in_gt for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
+        x_indices = [0,1] + [2 + t*3 + i for t in time_in_gt for i in range(3)] # shape [num_samples, [Re, SDF, Mask, u1, v1, p1, u2, v2, ...], 256, 1024]
         y_indices = [t*3 + i for t in time_out_gt for i in range(3)] # shape [num_samples, [u_k, v_k, p_k, u_k+1, v_k+1, p_k+1], 256, 1024]
 
         #Ronak - Removing ['data] as directly providing npy files
@@ -224,11 +224,12 @@ class FPODataModule(pl.LightningDataModule):
             Prediction update is used when we want to reuse the predictions from the previous time step to predict the next time step.
         
         """ 
+        print("Epoch: ", epoch, " update: ", update_type)
         if update_type == 'gt':
             
-            if epoch > 0 and epoch % epoch_per_timestep == 0:
+            if (epoch+1) % epoch_per_timestep == 0:
                 
-                offset = (epoch//epoch_per_timestep) * delta_time_step
+                offset = ((epoch + 1)//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset
@@ -237,7 +238,16 @@ class FPODataModule(pl.LightningDataModule):
                 #Calculate the indices for the new time window
                 t_in = np.arange(startin, startin + self.steps_in )
                 t_out = np.arange(startout, startout + self.steps_out)
-                
+                print("t_in: ", t_in, " t_out: ", t_out)
+
+
+                if hasattr(self.trainer, "logger"):
+                    self.trainer.logger.log_metrics({
+                        "Data Load Epoch": epoch,
+                        "Raw Dataset time in": t_in.tolist(),
+                        "Dataset time out": t_out.tolist()
+                    }, step=epoch)
+
                 #Check if the new time window is within the bounds of the data
                 if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
                     raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
@@ -248,11 +258,11 @@ class FPODataModule(pl.LightningDataModule):
                 
         elif update_type == 'pred':
                 
-            if epoch > 0 and epoch % epoch_per_timestep == 0:
+            if (epoch + 1) % epoch_per_timestep == 0:
                 if file_path_xprime == None:
                     raise ValueError("Invalid xprime path type. Please provide path for train and val dataset for xprime")
                 
-                offset = (epoch//epoch_per_timestep) * delta_time_step
+                offset = ((epoch + 1)//epoch_per_timestep) * delta_time_step
                 
                 # Update the time indices for training and validation data
                 startin = self.in_start + offset # Move input window start point by 1 step
@@ -261,6 +271,15 @@ class FPODataModule(pl.LightningDataModule):
                 #Calculate the indices for the new time window
                 t_in = np.arange(startin, startin + self.steps_in - offset) # input time array will be 1 step shorter. Reusing prediction is handled in the dataloader.
                 t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
+
+                print("t_in: ", t_in, " t_out: ", t_out)
+
+                if hasattr(self.trainer, "logger"):
+                    self.trainer.logger.log_metrics({
+                        "Data Load Epoch": epoch,
+                        "Raw Dataset time in": t_in.tolist(),
+                        "Dataset time out": t_out.tolist()
+                    }, step=epoch)
                 
                 #Check if the new time window is within the bounds of the data
                 if t_in[-1] > self.tmax or t_out[-1] > self.tmax:

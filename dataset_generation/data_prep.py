@@ -1,6 +1,7 @@
 import numpy as np
 from data_helper import read_time_steps, read_data_settings, data_download #Import the functions from data_helper.py
 import logging
+import os
 from data_logger import setup_logger #Import the logger function from data_logger.py
 
 if __name__ == '__main__':
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     #Save the data to npz files
     save_path = '../dataset_generation/fpo/'
     os.makedirs(save_path, exist_ok=True)
-    np.savez_compressed(os.path.join(base_dir, 'in_data.npz'), in_data)
-    np.savez_compressed(os.path.join(base_dir, 'out_data.npz'), out_data)
+    np.savez_compressed(os.path.join(save_path, 'in_data.npz'), in_data)
+    np.savez_compressed(os.path.join(save_path, 'out_data.npz'), out_data)
     
     logger.info('Saved the sampled data to npz files - Done')
