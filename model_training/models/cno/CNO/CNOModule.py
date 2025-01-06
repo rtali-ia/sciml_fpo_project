@@ -27,87 +27,97 @@ class CNOBlock(nn.Module):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 in_size,
-                 out_size,
-                 cutoff_den = 2.0001,
-                 conv_kernel = 3,
-                 filter_size = 6,
-                 lrelu_upsampling = 2,
-                 half_width_mult  = 0.8,
-                 radial = False,
-                 batch_norm = True,
-                 activation = 'cno_lrelu'
+                 in_size,          # Now expects tuple (height, width)
+                 out_size,         # Now expects tuple (height, width)
+                 cutoff_den=2.0001,
+                 conv_kernel=3,
+                 filter_size=6,
+                 lrelu_upsampling=2,
+                 half_width_mult=0.8,
+                 radial=False,
+                 batch_norm=True,
+                 activation='cno_lrelu'
                  ):
         super(CNOBlock, self).__init__()
         
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.in_size  = in_size
-        self.out_size = out_size
+        self.in_size = in_size    # (height, width)
+        self.out_size = out_size  # (height, width)
         self.conv_kernel = conv_kernel
         self.batch_norm = batch_norm
         
         #---------- Filter properties -----------
-        self.citically_sampled = False #We use w_c = s/2.0001 --> NOT critically sampled
-
-        if cutoff_den == 2.0:
-            self.citically_sampled = True
-        self.in_cutoff  = self.in_size / cutoff_den
-        self.out_cutoff = self.out_size / cutoff_den
+        self.critically_sampled = False  # Fixed typo in variable name
         
-        self.in_halfwidth =  half_width_mult*self.in_size - self.in_size / cutoff_den
-        self.out_halfwidth = half_width_mult*self.out_size - self.out_size / cutoff_den
+        if cutoff_den == 2.0:
+            self.critically_sampled = True
+            
+        # Use height for cutoff and halfwidth calculations
+        self.in_cutoff = self.in_size[0] / cutoff_den
+        self.out_cutoff = self.out_size[0] / cutoff_den
+        
+        self.in_halfwidth = half_width_mult * self.in_size[0] - self.in_size[0] / cutoff_den
+        self.out_halfwidth = half_width_mult * self.out_size[0] - self.out_size[0] / cutoff_den
         
         #-----------------------------------------
-
-        # We apply Conv -> BN (optional) -> Activation
-        # Up/Downsampling happens inside Activation
         
-        pad = (self.conv_kernel-1)//2
-        self.convolution = torch.nn.Conv2d(in_channels = self.in_channels, out_channels=self.out_channels, 
-                                           kernel_size=self.conv_kernel, 
-                                           padding = pad)
-    
+        # Convolution layer
+        pad = (self.conv_kernel - 1) // 2
+        self.convolution = nn.Conv2d(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=self.conv_kernel,
+            padding=pad
+        )
+        
+        # Batch normalization layer
         if self.batch_norm:
-            self.batch_norm  = nn.BatchNorm2d(self.out_channels)
+            self.batch_norm_layer = nn.BatchNorm2d(self.out_channels)  # Renamed to avoid conflict
         
+        # Activation layer
         if activation == "cno_lrelu":
-            self.activation  = LReLu(in_channels           = self.in_channels, #In _channels is not used in these settings
-                                     out_channels          = self.out_channels,                   
-                                     in_size               = self.in_size,                       
-                                     out_size              = self.out_size,                       
-                                     in_sampling_rate      = self.in_size,               
-                                     out_sampling_rate     = self.out_size,             
-                                     in_cutoff             = self.in_cutoff,                     
-                                     out_cutoff            = self.out_cutoff,                  
-                                     in_half_width         = self.in_halfwidth,                
-                                     out_half_width        = self.out_halfwidth,              
-                                     filter_size           = filter_size,       
-                                     lrelu_upsampling      = lrelu_upsampling,
-                                     is_critically_sampled = self.citically_sampled,
-                                     use_radial_filters    = False)
+            self.activation = LReLu(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                in_size=self.in_size,
+                out_size=self.out_size,
+                in_sampling_rate=self.in_size[0],  # Use height for sampling rate
+                out_sampling_rate=self.out_size[0],
+                in_cutoff=self.in_cutoff,
+                out_cutoff=self.out_cutoff,
+                in_half_width=self.in_halfwidth,
+                out_half_width=self.out_halfwidth,
+                filter_size=filter_size,
+                lrelu_upsampling=lrelu_upsampling,
+                is_critically_sampled=self.critically_sampled,
+                use_radial_filters=radial
+            )
         elif activation == "cno_lrelu_torch":
-            self.activation = LReLu_torch(in_channels           = self.out_channels, #In _channels is not used in these settings
-                                            out_channels          = self.out_channels,                   
-                                            in_size               = self.in_size,                       
-                                            out_size              = self.out_size,                       
-                                            in_sampling_rate      = self.in_size,               
-                                            out_sampling_rate     = self.out_size)
+            self.activation = LReLu_torch(
+                in_channels=self.out_channels,
+                out_channels=self.out_channels,
+                in_size=self.in_size,
+                out_size=self.out_size,
+                in_sampling_rate=self.in_size[0],
+                out_sampling_rate=self.out_size[0]
+            )
         elif activation == "lrelu":
-            self.activation  = LReLu_regular(in_channels           = self.in_channels, #In _channels is not used in these settings
-                                             out_channels          = self.out_channels,                   
-                                             in_size               = self.in_size,                       
-                                             out_size              = self.out_size,                       
-                                             in_sampling_rate      = self.in_size,               
-                                             out_sampling_rate     = self.out_size)
+            self.activation = LReLu_regular(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                in_size=self.in_size,
+                out_size=self.out_size,
+                in_sampling_rate=self.in_size[0],
+                out_sampling_rate=self.out_size[0]
+            )
         else:
             raise ValueError("Please specify different activation function")
-        
-        
+    
     def forward(self, x):
         x = self.convolution(x)
         if self.batch_norm:
-            x = self.batch_norm(x)
+            x = self.batch_norm_layer(x)
         return self.activation(x)
 
 #------------------------------------------------------------------------------
@@ -118,49 +128,58 @@ class LiftProjectBlock(nn.Module):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 in_size,
-                 out_size,
-                 latent_dim = 64,
-                 cutoff_den = 2.0001,
-                 conv_kernel = 3,
-                 filter_size = 6,
-                 lrelu_upsampling = 2,
-                 half_width_mult  = 0.8,
-                 radial = False,
-                 batch_norm = True,
-                 activation = 'cno_lrelu'
+                 in_size,          # Now expects tuple (height, width)
+                 out_size,         # Now expects tuple (height, width)
+                 latent_dim=64,
+                 cutoff_den=2.0001,
+                 conv_kernel=3,
+                 filter_size=6,
+                 lrelu_upsampling=2,
+                 half_width_mult=0.8,
+                 radial=False,
+                 batch_norm=True,
+                 activation='cno_lrelu'
                  ):
         super(LiftProjectBlock, self).__init__()
     
-        self.inter_CNOBlock = CNOBlock(in_channels = in_channels,
-                                    out_channels = latent_dim,
-                                    in_size = in_size,
-                                    out_size = out_size,
-                                    cutoff_den = cutoff_den,
-                                    conv_kernel = conv_kernel,
-                                    filter_size = filter_size,
-                                    lrelu_upsampling = lrelu_upsampling,
-                                    half_width_mult  = half_width_mult,
-                                    radial = radial,
-                                    batch_norm = batch_norm,
-                                    activation = activation)
+        # Intermediate CNO Block
+        self.inter_CNOBlock = CNOBlock(
+            in_channels=in_channels,
+            out_channels=latent_dim,
+            in_size=in_size,
+            out_size=out_size,
+            cutoff_den=cutoff_den,
+            conv_kernel=conv_kernel,
+            filter_size=filter_size,
+            lrelu_upsampling=lrelu_upsampling,
+            half_width_mult=half_width_mult,
+            radial=radial,
+            batch_norm=batch_norm,
+            activation=activation
+        )
         
-        pad = (conv_kernel-1)//2
-        self.convolution = torch.nn.Conv2d(in_channels = latent_dim, out_channels=out_channels, 
-                                           kernel_size=conv_kernel, stride = 1, 
-                                           padding = pad)
+        # Final convolution layer
+        pad = (conv_kernel - 1) // 2
+        self.convolution = nn.Conv2d(
+            in_channels=latent_dim,
+            out_channels=out_channels,
+            kernel_size=conv_kernel,
+            stride=1,
+            padding=pad
+        )
         
+        # Batch normalization layer
         self.batch_norm = batch_norm
         if self.batch_norm:
-            self.batch_norm  = nn.BatchNorm2d(out_channels)
+            self.batch_norm_layer = nn.BatchNorm2d(out_channels)  # Renamed to avoid conflict
         
     def forward(self, x):
         x = self.inter_CNOBlock(x)
-        
         x = self.convolution(x)
         if self.batch_norm:
-            x = self.batch_norm(x)
+            x = self.batch_norm_layer(x)
         return x
+
         
 #------------------------------------------------------------------------------
 
@@ -168,82 +187,83 @@ class LiftProjectBlock(nn.Module):
     # Convolution -> BN -> Activation -> Convolution -> BN -> SKIP CONNECTION
 
 class ResidualBlock(nn.Module):
-    def __init__(self,
-                 channels,
-                 size,
-                 cutoff_den = 2.0001,
-                 conv_kernel = 3,
-                 filter_size = 6,
-                 lrelu_upsampling = 2,
-                 half_width_mult  = 0.8,
-                 radial = False,
-                 batch_norm = True,
-                 activation = 'cno_lrelu'
-                 ):
+    def __init__(self, channels, size, # Now expects tuple (height, width)
+                 cutoff_den=2.0001, conv_kernel=3, filter_size=6,
+                 lrelu_upsampling=2, half_width_mult=0.8,
+                 radial=False, batch_norm=True, activation='cno_lrelu'):
         super(ResidualBlock, self).__init__()
-
         self.channels = channels
-        self.size  = size
+        self.size = size  # (height, width)
         self.conv_kernel = conv_kernel
         self.batch_norm = batch_norm
 
         #---------- Filter properties -----------
-        self.citically_sampled = False #We use w_c = s/2.0001 --> NOT critically sampled
-
+        self.critically_sampled = False  # Fixed typo in variable name
         if cutoff_den == 2.0:
-            self.citically_sampled = True
-        self.cutoff  = self.size / cutoff_den        
-        self.halfwidth =  half_width_mult*self.size - self.size / cutoff_den
-        
+            self.critically_sampled = True
+            
+        # Use height for cutoff and halfwidth calculations
+        self.cutoff = self.size[0] / cutoff_den
+        self.halfwidth = half_width_mult * self.size[0] - self.size[0] / cutoff_den
         #-----------------------------------------
-        
-        pad = (self.conv_kernel-1)//2
-        self.convolution1 = torch.nn.Conv2d(in_channels = self.channels, out_channels=self.channels, 
-                                           kernel_size=self.conv_kernel, stride = 1, 
-                                           padding = pad)
-        self.convolution2 = torch.nn.Conv2d(in_channels = self.channels, out_channels=self.channels, 
-                                           kernel_size=self.conv_kernel, stride = 1, 
-                                           padding = pad)
-        
+
+        pad = (self.conv_kernel - 1) // 2
+        self.convolution1 = nn.Conv2d(
+            in_channels=self.channels,
+            out_channels=self.channels,
+            kernel_size=self.conv_kernel,
+            stride=1,
+            padding=pad
+        )
+        self.convolution2 = nn.Conv2d(
+            in_channels=self.channels,
+            out_channels=self.channels,
+            kernel_size=self.conv_kernel,
+            stride=1,
+            padding=pad
+        )
+
         if self.batch_norm:
-            self.batch_norm1  = nn.BatchNorm2d(self.channels)
-            self.batch_norm2  = nn.BatchNorm2d(self.channels)
-        
+            self.batch_norm1 = nn.BatchNorm2d(self.channels)
+            self.batch_norm2 = nn.BatchNorm2d(self.channels)
+
         if activation == "cno_lrelu":
-
-            self.activation  = LReLu(in_channels           = self.channels, #In _channels is not used in these settings
-                                     out_channels          = self.channels,                   
-                                     in_size               = self.size,                       
-                                     out_size              = self.size,                       
-                                     in_sampling_rate      = self.size,               
-                                     out_sampling_rate     = self.size,             
-                                     in_cutoff             = self.cutoff,                     
-                                     out_cutoff            = self.cutoff,                  
-                                     in_half_width         = self.halfwidth,                
-                                     out_half_width        = self.halfwidth,              
-                                     filter_size           = filter_size,       
-                                     lrelu_upsampling      = lrelu_upsampling,
-                                     is_critically_sampled = self.citically_sampled,
-                                     use_radial_filters    = False)
-        
+            self.activation = LReLu(
+                in_channels=self.channels,
+                out_channels=self.channels,
+                in_size=self.size,
+                out_size=self.size,
+                in_sampling_rate=self.size[0],
+                out_sampling_rate=self.size[0],
+                in_cutoff=self.cutoff,
+                out_cutoff=self.cutoff,
+                in_half_width=self.halfwidth,
+                out_half_width=self.halfwidth,
+                filter_size=filter_size,
+                lrelu_upsampling=lrelu_upsampling,
+                is_critically_sampled=self.critically_sampled,
+                use_radial_filters=radial
+            )
         elif activation == "cno_lrelu_torch":
-            self.activation = LReLu_torch(in_channels           = self.channels, #In _channels is not used in these settings
-                                            out_channels          = self.channels,                   
-                                            in_size               = self.size,                       
-                                            out_size              = self.size,                       
-                                            in_sampling_rate      = self.size,               
-                                            out_sampling_rate     = self.size)
+            self.activation = LReLu_torch(
+                in_channels=self.channels,
+                out_channels=self.channels,
+                in_size=self.size,
+                out_size=self.size,
+                in_sampling_rate=self.size[0],
+                out_sampling_rate=self.size[0]
+            )
         elif activation == "lrelu":
-
-            self.activation = LReLu_regular(in_channels           = self.channels, #In _channels is not used in these settings
-                                            out_channels          = self.channels,                   
-                                            in_size               = self.size,                       
-                                            out_size              = self.size,                       
-                                            in_sampling_rate      = self.size,               
-                                            out_sampling_rate     = self.size)
+            self.activation = LReLu_regular(
+                in_channels=self.channels,
+                out_channels=self.channels,
+                in_size=self.size,
+                out_size=self.size,
+                in_sampling_rate=self.size[0],
+                out_sampling_rate=self.size[0]
+            )
         else:
             raise ValueError("Please specify different activation function")
-            
 
     def forward(self, x):
         out = self.convolution1(x)
@@ -253,8 +273,8 @@ class ResidualBlock(nn.Module):
         out = self.convolution2(out)
         if self.batch_norm:
             out = self.batch_norm2(out)
-        
         return x + out
+
 #------------------------------------------------------------------------------
 
 #CNO NETWORK:
@@ -328,9 +348,10 @@ class CNO(nn.Module):
         
         if not expand_input:
             latent_size = in_size # No change in in_size
+
         else:
             down_exponent = 2 ** N_layers
-            latent_size = in_size - (in_size % down_exponent) + down_exponent # Jump from 64 to 72, for example
+            latent_size = [in_size_item - (in_size_item % down_exponent) + down_exponent for in_size_item in in_size] # Jump from 64 to 72, for example
         
         #Are inputs and outputs of the same size? If not, how should the size of the decoder evolve?
         if out_size == 1:
@@ -340,13 +361,13 @@ class CNO(nn.Module):
                 latent_size_out = out_size # No change in in_size
             else:
                 down_exponent = 2 ** N_layers
-                latent_size_out = out_size - (out_size % down_exponent) + down_exponent # Jump from 64 to 72, for example
+                latent_size_out = [out_size_item - (out_size_item % down_exponent) + down_exponent for out_size_item in out_size] # Jump from 64 to 72, for example
         
         self.encoder_sizes = []
         self.decoder_sizes = []
         for i in range(self.N_layers + 1):
-            self.encoder_sizes.append(latent_size // 2 ** i)
-            self.decoder_sizes.append(latent_size_out // 2 ** (self.N_layers - i))
+            self.encoder_sizes.append([latent_size_item // 2 ** i for latent_size_item in latent_size])
+            self.decoder_sizes.append([latent_size_item // 2 ** (self.N_layers - i) for latent_size_item in latent_size_out])
         
         
         
