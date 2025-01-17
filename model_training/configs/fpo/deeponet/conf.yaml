@@ -1,7 +1,9 @@
 data:
-  file_path_train_x: "/scratch/au2216/flowbench_fpo/sciml_fpo_project/dataset_generation/fpo/80_84-85_89/in_data.npz"
-  file_path_train_y: "/scratch/au2216/flowbench_fpo/sciml_fpo_project/dataset_generation/fpo/80_84-85_89/out_data.npz"
-  tmax: 9
+  file_path_test_x: "/scratch/au2216/data_gen/1-10/dataset_generation/fpo/X_test.npz"
+  file_path_test_y: "/scratch/au2216/data_gen/1-10/dataset_generation/fpo/Y_test.npz"
+  file_path_train_x: "/scratch/au2216/data_gen/1-10/dataset_generation/fpo/X_train.npz"
+  file_path_train_y: "/scratch/au2216/data_gen/1-10/dataset_generation/fpo/Y_train.npz"
+  tmax: 20
   in_start: 0
   out_start: 0
   batch_size: 4
@@ -16,7 +18,7 @@ trainer:
   update_mode: pred
 
 model:
-  steps_in: 5
+  steps_in: 10
   steps_out: 1
   branch_net_layers: [512, 512, 512]
   trunk_net_layers: [256, 256, 256]

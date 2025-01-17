@@ -23,7 +23,7 @@ def set_seed(seed):
 def main(model_name, equation, config=None):
     torch.set_float32_matmul_precision('high')
 
-    config_path = '/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/configs/fpo/deeponet/conf.yaml'
+    config_path = '/scratch/au2216/flowbench_fpo/sciml_fpo_project_4_Jan/model_training/configs/fpo/deeponet/conf.yaml'
     config = OmegaConf.load(config_path)
 
     # Convert dictionary to OmegaConf
