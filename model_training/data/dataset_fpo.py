@@ -273,18 +273,19 @@ class FPODataModule(pl.LightningDataModule):
                 t_out = np.arange(startout, startout + self.steps_out) # length of output time array will be same. BTW this will default to 1 for now.
 
                 print("t_in: ", t_in, " t_out: ", t_out)
-
+                    
                 if hasattr(self.trainer, "logger"):
                     self.trainer.logger.log_metrics({
                         "Data Load Epoch": epoch,
                         "Raw Dataset time in": t_in.tolist(),
                         "Dataset time out": t_out.tolist()
                     }, step=epoch)
-                
-                #Check if the new time window is within the bounds of the data
-                if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
-                    raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
-                
+                    
+                if t_in.size != 0:
+                    #Check if the new time window is within the bounds of the data
+                    if t_in[-1] > self.tmax or t_out[-1] > self.tmax:
+                        raise ValueError("Time window exceeds data bounds. Please adjust the time windows.")
+                    
                 #Update the training and validation datasets with the new time window
                 self.train_data_loader = FPODatasetMix(self.file_path_X_train, file_path_xprime, self.file_path_Y_train, t_in, t_out, data_type='collocation')
                 self.val_data_loader = FPODataset(self.file_path_X_val, self.file_path_Y_val, t_in, t_out, data_type='collocation')

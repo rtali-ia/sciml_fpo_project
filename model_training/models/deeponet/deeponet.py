@@ -52,8 +52,9 @@ class DeepONet(BaseLightningModule):
                     new_data = predictions_numpy
                     new_data = np.concatenate((previous_data, new_data), axis=1)
                     
-                    #Save the updated data
+                    #Save the updated data  
                     np.save(save_path, new_data)
                     
                 #Call the update_data method of the datamodule to update the time indices for training data.
-                self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = self.update_mode, file_path_xprime=save_path, epoch_per_timestep = self.epoch_per_timestep, delta_time_step = self.delta_time_step)
+                if (self.current_epoch +1) != self.trainer.max_epochs:
+                    self.trainer.datamodule.update_data(self.trainer.current_epoch, update_type = self.update_mode, file_path_xprime=save_path, epoch_per_timestep = self.epoch_per_timestep, delta_time_step = self.delta_time_step)

@@ -82,7 +82,7 @@ def main(model_name, equation, config=None):
     max_steps = ((config["data"]["tmax"] - max(config["data"]["in_start"] + config["model"]["steps_in"], config["data"]["out_start"] + config["model"]["steps_out"])) // config["trainer"]["delta_time_step"]) + 1
 
     trainer = pl.Trainer(
-        max_epochs=config.trainer.epoch_per_timestep*max_steps,
+        max_epochs=config.trainer.epoch_per_timestep*config.trainer.total_step,
         accelerator=config.trainer.accelerator,
         devices=config.trainer.devices,
         callbacks=[checkpoint_callback],
