@@ -23,7 +23,7 @@ def set_seed(seed):
 def main(model_name, equation, config=None):
     torch.set_float32_matmul_precision('high')
 
-    config_path = '/scratch/au2216/flowbench_fpo/sciml_fpo_project/model_training/configs/fpo/deeponet/conf.yaml'
+    config_path = '/scratch/au2216/flowbench_fpo/sciml_fpo_project_4_Jan/model_training/configs/fpo/deeponet/conf.yaml'
     config = OmegaConf.load(config_path)
 
     # Convert dictionary to OmegaConf
@@ -41,6 +41,7 @@ def main(model_name, equation, config=None):
         log_model=False  # Changed 'false' string to False boolean
     )
 
+    wandb_logger.experiment.save(config_path)
     wandb_logger.experiment.config.update(config_serializable)
 
     data_module = FPODataModule(
@@ -57,14 +58,15 @@ def main(model_name, equation, config=None):
     )
 
     model = DeepONet(
-        input_channels_func=(config.model.steps_in + 1) * 3,
+        input_channels_func=(config.model.steps_in * 3)+2,
         input_channels_loc=config.model.input_channels_loc,
         out_channels=config.model.steps_out * 3,
         branch_net_layers=config.model.branch_net_layers,
         trunk_net_layers=config.model.trunk_net_layers,
         modes=config.model.modes,
         epoch_per_timestep = config.trainer.epoch_per_timestep, 
-        delta_time_step = config.trainer.delta_time_step
+        delta_time_step = config.trainer.delta_time_step,
+        update_mode = config.trainer.update_mode
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -80,7 +82,7 @@ def main(model_name, equation, config=None):
     max_steps = ((config["data"]["tmax"] - max(config["data"]["in_start"] + config["model"]["steps_in"], config["data"]["out_start"] + config["model"]["steps_out"])) // config["trainer"]["delta_time_step"]) + 1
 
     trainer = pl.Trainer(
-        max_epochs=config.trainer.epoch_per_timestep*max_steps,
+        max_epochs=config.trainer.epoch_per_timestep*config.trainer.total_step,
         accelerator=config.trainer.accelerator,
         devices=config.trainer.devices,
         callbacks=[checkpoint_callback],
@@ -96,6 +98,9 @@ def main(model_name, equation, config=None):
     elapsed_time = end_time - start_time
     print(f"Total training time: {elapsed_time:.2f} seconds")
     wandb_logger.log_metrics({'training_time': elapsed_time})
+
+    wandb_logger.experiment.save('wandb-metadata.json')
+    wandb_logger.experiment.save('wandb-summary.json')
 
     # Cleanup
     del model, data_module
